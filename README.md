@@ -1,2 +1,3 @@
 # nf-hla-neo
-Pipeline to make neonantigen prediction from WGS data 
+Pipeline to predict neoantigens  from WGS of T/N pairs
+
