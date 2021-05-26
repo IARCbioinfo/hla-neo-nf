@@ -23,6 +23,7 @@ def show_help (){
       --output_folder       [string] name of output folder
       --cpu                 [Integer]  Number of CPUs[def:2]
       --mem 		            [Integer] Max memory [def:8Gb]
+      --pvactools_predictors [string] predicttions tools to compute neoantigens [def:all_class_i,all_class_ii or NetMHCpan,NetMHCIIpan]
       """.stripIndent()
 }
 
@@ -152,7 +153,11 @@ process pVactools {
     set val(tumor_id), file("${tumor_id}.neo") into pVACTOOLS_out
   script:
        """
-       echo "${tumor_id} ${vcf_vep} ${normal_id} ${tumor_id_name} ${hla_dir_out}"
+       #echo "${tumor_id} ${vcf_vep} ${normal_id} ${tumor_id_name} ${hla_dir_out}"
+
+       perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out}/report-${tumor_id}-hla.json \\
+            -b ${baseDir}/db/xHLA2PVAC_alleles.txt -c ${normal_id}   -d ${vcf_vep} -t ${tumor_id_name} -p ${tumor_id} \\
+            -e ${params.pvactools_predictors}
        touch ${tumor_id}.neo
        """
 }

@@ -1,6 +1,6 @@
 
 ###############################################################################
-# Author: Alex Di Genova 
+# Author: Alex Di Genova
 # Laboratory: ERABLE/INRIA
 # Copyright (c)
 # year: 2017
@@ -10,30 +10,45 @@ use Getopt::Std;
 use strict;
 
 sub usage {
-   print "$0 usage : -a  -b  -c\n";
+   print "$0 usage : -a xHLA.json -b xHLA2pvac -c normal_id -d vep_vcf -t tumor_id_name -p prefix -e tools\n";
    print "Error in use\n";
    exit 1;
 }
 
 my %opts = ();
-getopts( "a:b:c:", \%opts );
-if ( !defined $opts{a}  ) {
+getopts( "a:b:c:d:t:p:e:", \%opts );
+if ( !defined $opts{a} or !defined $opts{b} or !defined $opts{c} or !defined $opts{d} or !defined $opts{t} or !defined $opts{p}) {
    usage;
 }
 
 
 my ($alleles)=parse_xHLA_output($opts{a},$opts{b});
+my $tools=$opts{e};
+$tools=~s/,/ /g;
 
+# we run pvacseq
+my @tumors=split(",",$opts{t});
+my $i=1;
 
-
-
-
-
+foreach my $t(@tumors){
+my $cmd="";
+if(scalar(@tumors) == 1){
+  $cmd="pvacseq run --pass-only --normal-sample-name $opts{c} $opts{d} $t ".join(",",@{$alleles->{pvac}});
+   $cmd.=" $tools $opts{p}_T_pvactools";
+   print $cmd."\n";
+ }else{
+     $cmd="pvacseq run --pass-only --normal-sample-name $opts{c} $opts{d} $t ".join(",",@{$alleles->{pvac}});
+      $cmd.=" $tools $opts{p}_T".$i."_pvactools";
+      print $cmd."\n";
+      $i++;
+ }
+ system($cmd)==0  or die "pvactools:  failed: $?";
+}
 
 
 sub parse_xHLA_output{
 	my ($file,$xhla2pvac)=@_;
-	my $hash=load_xHLA2pvactools($xhla2pvac);	
+	my $hash=load_xHLA2pvactools($xhla2pvac);
 	open(FILE,$file) or die "cannot open file $file\n";
 	my $alleles=();
 	while(my $line=<FILE>){
