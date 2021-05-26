@@ -95,6 +95,27 @@ process xHLA {
       """
 }
 
+// Annnot the VCF with VEP tools
+process VEP{
+
+
+
+  """
+  vep -i MESO_050_filtered_PASS_norm.vcf.gz \\
+  -o MESO_050_filtered_PASS_norm.vep.vcf \\
+  --cache --offline \\
+  --dir_cache $PWD/vep-db/GRCh38/vep/ \\
+  --format vcf --vcf  --terms SO --tsl --hgvs \\
+  --plugin Downstream  --plugin Wildtype --dir_plugins $PWD/VEP_plugins \\
+  --pick  --transcript_version
+  """
+}
+
+
+process PVACTOOLS {
+
+}
+
 // process AMBER {
 //
 //  cpus params.cpu
