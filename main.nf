@@ -96,6 +96,8 @@ process xHLA {
 }
 
 // Annnot the VCF with VEP tools
+
+//https://pvactools.readthedocs.io/en/latest/pvacseq/input_file_prep/vep.html
 process VEP{
 
 
@@ -106,7 +108,23 @@ process VEP{
   --cache --offline \\
   --dir_cache $PWD/vep-db/GRCh38/vep/ \\
   --format vcf --vcf  --terms SO --tsl --hgvs \\
-  --plugin Downstream  --plugin Wildtype --dir_plugins $PWD/VEP_plugins \\
+  --plugin Downstream  --plugin Wildtype --dir_plugins ${baseDir}/VEP_plugins \\
+  --pick  --transcript_version
+
+  vep -i MESO_050_filtered_PASS_norm.vcf.gz \\
+  -o MESO_050_filtered_PASS_norm.vep.vcf \\
+  --cache --offline \\
+  --dir_cache $PWD/vep-db/GRCh38/vep/ \\
+  --format vcf \\
+  --vcf \\
+  --symbol  \\
+  --terms SO \\
+  --tsl \\
+  --hgvs \\
+  --fasta $PWD/vep-db/GRCh38/vep/homo_sapiens/104_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz \\
+  --plugin Frameshift \\
+  --plugin Wildtype \\
+  --dir_plugins ${baseDir}/VEP_plugins \\
   --pick  --transcript_version
   """
 }
