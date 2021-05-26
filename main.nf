@@ -15,7 +15,9 @@ def show_help (){
 
     Mandatory arguments:
       --tn_file		         [file] File containing list of T/N bam/cram files to be processed
-      --cohort_dir         [dir]  directory where the BAM or CRAM  file are stored
+      --cram_dir         [dir]  directory where the BAM or CRAM  file are stored
+      --vcf_dir         [dir]  directory where the VCF files are stored
+      --vep_dir         [dir] directory containing VEP database for annotation [hg38, GENCODE 33]
       --ref               [file] fasta file of chr6 of reference genome [chr6-hg38.fa], should be indexed [chr6-hg38.fa.fai]
     Optional arguments:
       --output_folder       [string] name of output folder
@@ -36,14 +38,16 @@ log.info tool_header()
 //Check mandatory parameters
 assert (params.ref != null) : "please specify --ref chr6-hg38.fasta"
 assert (params.tn_file != null ) : "please specify --tn_file"
-assert (params.cohort_dir != null ) : "please specify --cohort_dir"
+assert (params.cram_dir != null ) : "please specify --cram_dir"
+assert (params.vcf_dir != null ) : "please specify --vcf_dir"
+assert (params.vep_dir != null ) : "please specify --vep_dir"
 
 //function that read the tumors to process from a tn_file
 if(params.tn_file){
   def cram = params.bam ? false:true
- tn_pairs = parse_tn_file(params.tn_file,params.cohort_dir,cram)
+ tn_pairs = parse_tn_file(params.tn_file,params.vcf_dir,params.cram_dir,cram)
  //we duplicate the tn_pairs channel
- tn_pairs.into {xHLA_input}
+ tn_pairs.into {xHLA_input; xVEP_input; pvactools_input}
 }
 
 //chanel for reference genome
@@ -55,7 +59,7 @@ ref_bwt =  file(params.ref+'.bwt')
 ref_ann =  file(params.ref+'.ann')
 ref_amb =  file(params.ref+'.amb')
 ref_pac =  file(params.ref+'.pac')
-
+vep_dir_path = file(params.vep_dir)
 print_params()
 
 //PATHS in the container for databases
@@ -72,7 +76,7 @@ process xHLA {
 
   publishDir params.output_folder+'/xHLA/', mode: 'copy'
   input:
-  set val(tumor_id), file(tumor), file(tumor_index), file(normal), file(normal_index) from xHLA_input
+  set val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name) from xHLA_input
   file(ref) from ref_fasta
   file(fai) from ref_fai
   file ref_sa
@@ -82,57 +86,125 @@ process xHLA {
   file ref_pac
 
   output:
-  set val(tumor_id), path("${tumor_id}_xHLA") into xHLA
+  set val(tumor_id), file("${tumor_id}_mhc") into xHLA_out
   script:
        """
-      #we run for the normal CRAM it create prefix.mhc.bam
+      # we get the mhc reads for the normal CRAM/BAM it create prefix.mhc.bam
       echo perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${params.ref} -p ${tumor_id}
-      #we run xHLA
+      # we run xHLA
       echo run.py  --sample_id ${tumor_id} --input_bam_path ${tumor_id}.mhc.bam --output_path ${tumor_id}_mhc
+      mkdir ${tumor_id}_mhc
+      #touch ${tumor_id}_mhc/report-${tumor_id}-hla.json
+      cat ${baseDir}/aux/report-example-hla.json > ${tumor_id}_mhc/report-${tumor_id}-hla.json
       #we run for the tumor CRAM
       #perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${ref_fasta}
-      mkdir ${tumor_id}_xHLA
+      #mkdir ${tumor_id}_xHLA
       """
 }
 
 // Annnot the VCF with VEP tools
-
+//create a local VEP database (gencode 33) ~ 16Gb size
+//vep_install -a cf -s homo_sapiens -y GRCh38 -c vep-db-99 --CONVERT
 //https://pvactools.readthedocs.io/en/latest/pvacseq/input_file_prep/vep.html
-process VEP{
+process VEP {
+ cpus params.cpu
+ memory params.mem+'G'
 
-
-
-  """
-  vep -i MESO_050_filtered_PASS_norm.vcf.gz \\
-  -o MESO_050_filtered_PASS_norm.vep.vcf \\
-  --cache --offline \\
-  --dir_cache $PWD/vep-db/GRCh38/vep/ \\
-  --format vcf --vcf  --terms SO --tsl --hgvs \\
-  --plugin Downstream  --plugin Wildtype --dir_plugins ${baseDir}/VEP_plugins \\
-  --pick  --transcript_version
-
-  vep -i MESO_050_filtered_PASS_norm.vcf.gz \\
-  -o MESO_050_filtered_PASS_norm.vep.vcf \\
-  --cache --offline \\
-  --dir_cache $PWD/vep-db/GRCh38/vep/ \\
-  --format vcf \\
-  --vcf \\
-  --symbol  \\
-  --terms SO \\
-  --tsl \\
-  --hgvs \\
-  --fasta $PWD/vep-db/GRCh38/vep/homo_sapiens/104_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz \\
-  --plugin Frameshift \\
-  --plugin Wildtype \\
-  --dir_plugins ${baseDir}/VEP_plugins \\
-  --pick  --transcript_version
-  """
+  publishDir params.output_folder+'/VEP/', mode: 'copy'
+  input:
+  set val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name) from xVEP_input
+  file (vep_dir_path)
+  output:
+    set val(tumor_id), file("${tumor_id}.vep.vcf") into xVEP_out
+  script:
+       """
+       echo vep -i ${vcf} \\
+        -o ${tumor_id}.vep.vcf \\
+        --cache --offline \\
+        --dir_cache ${vep_dir_path} \\
+        --format vcf \\
+        --vcf \\
+        --symbol  \\
+        --terms SO \\
+        --tsl \\
+        --hgvs \\
+        --fasta ${vep_dir_path}/homo_sapiens/99_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz \\
+        --plugin Frameshift \\
+        --plugin Wildtype \\
+        --dir_plugins ${baseDir}/VEP_plugins \\
+        --pick  --transcript_version
+       touch ${tumor_id}.vep.vcf
+       """
 }
 
 
-process PVACTOOLS {
+process pVactools {
+ cpus params.cpu
+ memory params.mem+'G'
 
+  publishDir params.output_folder+'/pVACTOOLS/', mode: 'copy'
+  input:
+  set val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name) from pvactools_input
+  set val(tumor_id), file(vcf_vep) from xVEP_out
+  set val(tumor_id), file(hla_dir_out) from xHLA_out
+
+  output:
+    set val(tumor_id), file("${tumor_id}.neo") into pVACTOOLS_out
+  script:
+       """
+       echo "${tumor_id} ${vcf_vep} ${normal_id} ${tumor_id_name} ${hla_dir_out}"
+       touch ${tumor_id}.neo
+       """
 }
+// process VEP{
+//
+//   """
+//   vep -i MESO_050_filtered_PASS_norm.vcf.gz \\
+//   -o MESO_050_filtered_PASS_norm.vep.vcf \\
+//   --cache --offline \\
+//   --dir_cache $PWD/vep-db/GRCh38/vep/ \\
+//   --format vcf --vcf  --terms SO --tsl --hgvs \\
+//   --plugin Frameshift  --plugin Wildtype --dir_plugins ${baseDir}/VEP_plugins \\
+//   --pick  --transcript_version
+//
+//     vep -i MESO_050_filtered_PASS_norm.vcf.gz \\
+//     -o MESO_050_filtered_PASS_norm.vep.vcf \\
+//     --cache --offline \\
+//     --dir_cache $PWD/vep-db-99/ \\
+//     --format vcf \\
+//     --vcf \\
+//     --symbol  \\
+//     --terms SO \\
+//     --tsl \\
+//     --hgvs \\
+//     --fasta $PWD/vep-db-99/homo_sapiens/99_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz \\
+//     --plugin Frameshift \\
+//     --plugin Wildtype \\
+//     --dir_plugins ${baseDir}/VEP_plugins \\
+//   --pick  --transcript_version
+//   """
+// }
+// //--fasta vep-db-99/homo_sapiens/99_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz
+// //Filtering thresholds for MHC class I and class II
+// //https://help.iedb.org/hc/en-us/articles/114094151811-Selecting-thresholds-cut-offs-for-MHC-class-I-and-II-binding-predictions
+// process PVACTOOLS {
+//
+// //
+//
+// """
+//   pvacseq run --pass-only \\
+//   --normal-sample-name B00JAJW  MESO_050_filtered_PASS_norm.vep.vcf B00JAJX HLA-A*02:01,HLA-A*02:01,HLA-B*18:01,HLA-B*27:05,HLA-C*02:02,HLA-C*07:01,DPB1*02:01,DPB1*04:01,DQB1*03:01,DQB1*03:03,DRB1*07:01,DRB1*11:04 \\
+//     all_class_i all_class_ii test-pvacseq2
+//     pvacseq run --pass-only \\
+//     --normal-sample-name B00JAJW  MESO_050_filtered_PASS_norm.vep.vcf B00JAJX HLA-A*02:01,HLA-A*02:01,HLA-B*18:01,HLA-B*27:05,HLA-C*02:02,HLA-C*07:01,DPB1*02:01,DPB1*04:01,DQB1*03:01,DQB1*03:03,DRB1*07:01,DRB1*11:04  \\
+//     NetMHCpan NetMHCIIpan test-pvacseq3
+//     # for multi-region samples
+//     #reg 1
+//     pvacseq run --pass-only --normal-sample-name B00JAM5 MESO_002_filtered_PASS_norm.vep.vcf B00JALW HLA-A*02:01,HLA-A*02:01,HLA-B*18:01,HLA-B*27:05,HLA-C*02:02,HLA-C*07:01,DPB1*02:01,DPB1*04:01,DQB1*03:01,DQB1*03:03,DRB1*07:01,DRB1*11:04  NetMHCpan NetMHCIIpan multireg-pvacseq1
+//     #reg 2
+//     pvacseq run --pass-only --normal-sample-name B00JAM5  MESO_002_filtered_PASS_norm.vep.vcf B00JALX HLA-A*02:01,HLA-A*02:01,HLA-B*18:01,HLA-B*27:05,HLA-C*02:02,HLA-C*07:01,DPB1*02:01,DPB1*04:01,DQB1*03:01,DQB1*03:03,DRB1*07:01,DRB1*11:04  NetMHCpan NetMHCIIpan multireg-pvacseq2
+// """
+// }
 
 // process AMBER {
 //
@@ -227,17 +299,21 @@ process PVACTOOLS {
 */
 
 //we read the pairs from tn_file
-def parse_tn_file (tn_file,path,cram){
+def parse_tn_file (tn_file,path_vcf,path_cram,cram){
 	    // FOR INPUT AS A TAB DELIMITED FILE
 			def file_ext = cram ? '.crai':'.bai'
 			//[sample t[.bam,cram] t[.bai,crai] n[.bam,.cram] n[.bai,.crai]]
+      //id      vcf     normal_cram     normal_id       tumor_id
+
+
     def tn_pairs=Channel.fromPath(tn_file)
       .splitCsv(header: true, sep: '\t', strip: true)
-      .map{row -> [ row.tumor_id,
-               file(path + "/" + row.tumor),
-               file(path + "/" + row.tumor+file_ext),
-               file(path + "/" + row.normal),
-               file(path + "/" + row.normal+file_ext)]}
+      .map{row -> [ row.id,
+               file(path_vcf + "/" + row.vcf),
+               file(path_cram + "/" + row.normal_cram),
+               file(path_cram + "/" + row.normal_cram+file_ext),
+               row.normal_id,
+               row.tumor_id]}
       .ifEmpty{exit 1, "${tn_file} was empty - no tumor/normal supplied" }
 	//we return the channel
   return tn_pairs
