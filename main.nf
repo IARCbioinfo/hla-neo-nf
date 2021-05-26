@@ -91,12 +91,12 @@ process xHLA {
   script:
        """
       # we get the mhc reads for the normal CRAM/BAM it create prefix.mhc.bam
-      echo perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${params.ref} -p ${tumor_id}
+      perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${params.ref} -p ${tumor_id}
       # we run xHLA
-      echo run.py  --sample_id ${tumor_id} --input_bam_path ${tumor_id}.mhc.bam --output_path ${tumor_id}_mhc
-      mkdir ${tumor_id}_mhc
+      run.py  --sample_id ${tumor_id} --input_bam_path ${tumor_id}.mhc.bam --output_path ${tumor_id}_mhc
+      #mkdir ${tumor_id}_mhc
       #touch ${tumor_id}_mhc/report-${tumor_id}-hla.json
-      cat ${baseDir}/aux/report-example-hla.json > ${tumor_id}_mhc/report-${tumor_id}-hla.json
+      #cat ${baseDir}/aux/report-example-hla.json > ${tumor_id}_mhc/report-${tumor_id}-hla.json
       #we run for the tumor CRAM
       #perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${ref_fasta}
       #mkdir ${tumor_id}_xHLA
@@ -119,7 +119,7 @@ process VEP {
     set val(tumor_id), file("${tumor_id}.vep.vcf") into xVEP_out
   script:
        """
-       echo vep -i ${vcf} \\
+       vep -i ${vcf} \\
         -o ${tumor_id}.vep.vcf \\
         --cache --offline \\
         --dir_cache ${vep_dir_path} \\
@@ -134,7 +134,7 @@ process VEP {
         --plugin Wildtype \\
         --dir_plugins ${baseDir}/VEP_plugins \\
         --pick  --transcript_version
-       touch ${tumor_id}.vep.vcf
+       #touch ${tumor_id}.vep.vcf
        """
 }
 
@@ -150,151 +150,20 @@ process pVactools {
   set val(tumor_id), file(hla_dir_out) from xHLA_out
 
   output:
-    set val(tumor_id), file("${tumor_id}.neo") into pVACTOOLS_out
+    set val(tumor_id), path("${tumor_id}*_pvactools") into pVACTOOLS_out
+    file("${tumor_id}.pvactools.log")
   script:
        """
        #echo "${tumor_id} ${vcf_vep} ${normal_id} ${tumor_id_name} ${hla_dir_out}"
-
        perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out}/report-${tumor_id}-hla.json \\
             -b ${baseDir}/db/xHLA2PVAC_alleles.txt -c ${normal_id}   -d ${vcf_vep} -t ${tumor_id_name} -p ${tumor_id} \\
-            -e ${params.pvactools_predictors}
-       touch ${tumor_id}.neo
+            -e ${params.pvactools_predictors} > ${tumor_id}.pvactools.log
+       #touch ${tumor_id}.neo
+       #mkdir ${tumor_id}_T1_pvactools
+       #mkdir ${tumor_id}_T2_pvactools
+       #touch ${tumor_id}.pvactools.log
        """
 }
-// process VEP{
-//
-//   """
-//   vep -i MESO_050_filtered_PASS_norm.vcf.gz \\
-//   -o MESO_050_filtered_PASS_norm.vep.vcf \\
-//   --cache --offline \\
-//   --dir_cache $PWD/vep-db/GRCh38/vep/ \\
-//   --format vcf --vcf  --terms SO --tsl --hgvs \\
-//   --plugin Frameshift  --plugin Wildtype --dir_plugins ${baseDir}/VEP_plugins \\
-//   --pick  --transcript_version
-//
-//     vep -i MESO_050_filtered_PASS_norm.vcf.gz \\
-//     -o MESO_050_filtered_PASS_norm.vep.vcf \\
-//     --cache --offline \\
-//     --dir_cache $PWD/vep-db-99/ \\
-//     --format vcf \\
-//     --vcf \\
-//     --symbol  \\
-//     --terms SO \\
-//     --tsl \\
-//     --hgvs \\
-//     --fasta $PWD/vep-db-99/homo_sapiens/99_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz \\
-//     --plugin Frameshift \\
-//     --plugin Wildtype \\
-//     --dir_plugins ${baseDir}/VEP_plugins \\
-//   --pick  --transcript_version
-//   """
-// }
-// //--fasta vep-db-99/homo_sapiens/99_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz
-// //Filtering thresholds for MHC class I and class II
-// //https://help.iedb.org/hc/en-us/articles/114094151811-Selecting-thresholds-cut-offs-for-MHC-class-I-and-II-binding-predictions
-// process PVACTOOLS {
-//
-// //
-//
-// """
-//   pvacseq run --pass-only \\
-//   --normal-sample-name B00JAJW  MESO_050_filtered_PASS_norm.vep.vcf B00JAJX HLA-A*02:01,HLA-A*02:01,HLA-B*18:01,HLA-B*27:05,HLA-C*02:02,HLA-C*07:01,DPB1*02:01,DPB1*04:01,DQB1*03:01,DQB1*03:03,DRB1*07:01,DRB1*11:04 \\
-//     all_class_i all_class_ii test-pvacseq2
-//     pvacseq run --pass-only \\
-//     --normal-sample-name B00JAJW  MESO_050_filtered_PASS_norm.vep.vcf B00JAJX HLA-A*02:01,HLA-A*02:01,HLA-B*18:01,HLA-B*27:05,HLA-C*02:02,HLA-C*07:01,DPB1*02:01,DPB1*04:01,DQB1*03:01,DQB1*03:03,DRB1*07:01,DRB1*11:04  \\
-//     NetMHCpan NetMHCIIpan test-pvacseq3
-//     # for multi-region samples
-//     #reg 1
-//     pvacseq run --pass-only --normal-sample-name B00JAM5 MESO_002_filtered_PASS_norm.vep.vcf B00JALW HLA-A*02:01,HLA-A*02:01,HLA-B*18:01,HLA-B*27:05,HLA-C*02:02,HLA-C*07:01,DPB1*02:01,DPB1*04:01,DQB1*03:01,DQB1*03:03,DRB1*07:01,DRB1*11:04  NetMHCpan NetMHCIIpan multireg-pvacseq1
-//     #reg 2
-//     pvacseq run --pass-only --normal-sample-name B00JAM5  MESO_002_filtered_PASS_norm.vep.vcf B00JALX HLA-A*02:01,HLA-A*02:01,HLA-B*18:01,HLA-B*27:05,HLA-C*02:02,HLA-C*07:01,DPB1*02:01,DPB1*04:01,DQB1*03:01,DQB1*03:03,DRB1*07:01,DRB1*11:04  NetMHCpan NetMHCIIpan multireg-pvacseq2
-// """
-// }
-
-// process AMBER {
-//
-//  cpus params.cpu
-//  memory params.mem+'G'
-//
-//
-//
-//   publishDir params.output_folder+'/AMBER/', mode: 'copy'
-//   input:
-//   set val(tumor_id), file(tumor), file(tumor_index), file(normal), file(normal_index) from tn_pairs_amber
-//   file(ref) from ref_fasta
-//   file(fai) from ref_fai
-//   output:
-//   set val(tumor_id), path("${tumor_id}_AMBER") into amber
-//   script:
-//      if(params.tumor_only){
-//        """
-//       AMBER  -Xms1g -Xmx${params.mem}g  -loci /hmftools/hg38/GermlineHetPon.38.vcf -ref_genome ${ref} -tumor_only \\
-//               -tumor  ${tumor_id}_T -tumor_bam ${tumor} -output_dir ${tumor_id}_AMBER -threads ${params.cpu}
-//       """
-//      }else{
-//        """
-//        AMBER   -Xms1g -Xmx${params.mem}g -loci /hmftools/hg38/GermlineHetPon.38.vcf -ref_genome ${ref} \\
-//                -reference ${tumor_id}_N -reference_bam ${normal}  \\
-//                -tumor  ${tumor_id}_T -tumor_bam ${tumor} -output_dir ${tumor_id}_AMBER -threads ${params.cpu}
-//         """
-//      }
-//
-// }
-// //we merge previous results from amber and cobalt
-// amber_cobalt=amber.join(cobalt, remainder: true)
-//
-// process PURPLE {
-//
-//  cpus params.cpu
-//  memory params.mem+'G'
-//
-//   publishDir params.output_folder+'/PURPLE/', mode: 'copy'
-//
-//   input:
-//   //set val(tumor_id), file(tumor), file(tumor_index), file(normal), file(normal_index) from tn_pairs_amber
-//   set val(tumor_id), path(amber_dir), path(cobalt_dir) from amber_cobalt
-//   file(ref) from ref_fasta
-//   file(fai) from ref_fai
-//   file(dict) from ref_dict
-//   output:
-//   set val(tumor_id), path("${tumor_id}_PURPLE") into purple
-//   //MESO_071_T_T.purple.purity.tsv
-//   //set val(tumor_id), file("${tumor_id}_PURPLE/${tumor_id}_T.purple.purity.tsv") into stats_purple
-//   file("${tumor_id}_T.purple.purity.sample.tsv") into stats_purple
-//
-//   script:
-//      if(params.tumor_only){
-//        """
-//        PURPLE  -Xms1g -Xmx${params.mem}g -tumor_only  -tumor ${tumor_id}_T \\
-//                -no_charts \\
-//                -output_dir ${tumor_id}_PURPLE \\
-//                -amber ${amber_dir} \\
-//                -cobalt ${cobalt_dir} \\
-//                -gc_profile /hmftools/hg38/GC_profile.1000bp.38.cnp \\
-//                -threads ${params.cpu} \\
-//                -ref_genome ${ref}
-//
-//         awk -v tumor=${tumor_id} '{print tumor"\t"\$0}' ${tumor_id}_PURPLE/${tumor_id}_T.purple.purity.tsv > ${tumor_id}_T.purple.purity.sample.tsv
-//
-//        """
-//      }else{
-//        """
-//         PURPLE  -Xms1g -Xmx${params.mem}g -reference ${tumor_id}_N  -tumor ${tumor_id}_T \\
-//                -no_charts \\
-//                -output_dir ${tumor_id}_PURPLE \\
-//                -amber ${amber_dir} \\
-//                -cobalt ${cobalt_dir} \\
-//                -gc_profile /hmftools/hg38/GC_profile.1000bp.38.cnp \\
-//                -threads ${params.cpu} \\
-//                -ref_genome ${ref}
-//
-//          awk -v tumor=${tumor_id} '{print tumor"\t"\$0}' ${tumor_id}_PURPLE/${tumor_id}_T.purple.purity.tsv > ${tumor_id}_T.purple.purity.sample.tsv
-//        """
-//      }
-//
-// }
-//
-// stats_purple.collectFile(name: 'purple_summary.txt', storeDir: params.output_folder, seed: 'tumor_id\tpurity\tnormFactor\tscore\tdiploidProportion\tploidy\tgender\tstatus\tpolyclonalProportion\tminPurity\tmaxPurity\tminPloidy\tmaxPloidy\tminDiploidProportion\tmaxDiploidProportion\tversion\tsomaticPenalty\twholeGenomeDuplication\tmsIndelsPerMb\tmsStatus\ttml\ttmlStatus\ttmbPerMb\ttmbStatus\tsvTumorMutationalBurden\n', newLine: false, skip: 1)
 
 
 /*
