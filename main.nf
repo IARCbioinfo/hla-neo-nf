@@ -23,7 +23,7 @@ def show_help (){
       --output_folder       [string] name of output folder
       --cpu                 [Integer]  Number of CPUs[def:2]
       --mem 		            [Integer] Max memory [def:8Gb]
-      --pvactools_predictors [string] predicttions tools to compute neoantigens [def:NetMHCpan,NetMHCIIpan or all_class_i,all_class_ii]
+      --pvactools_predictors [string] predicttions tools to compute neoantigens [def:all_class_i,all_class_ii or NetMHCpan,NetMHCIIpan]
       """.stripIndent()
 }
 
