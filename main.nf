@@ -91,10 +91,10 @@ process xHLA {
   script:
        """
       # we get the mhc reads for the normal CRAM/BAM it create prefix.mhc.bam
-      perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${params.ref} -p ${tumor_id}
+      echo perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${params.ref} -p ${tumor_id}
       # we run xHLA
-      run.py  --sample_id ${tumor_id} --input_bam_path ${tumor_id}.mhc.bam --output_path ${tumor_id}_mhc
-      #mkdir ${tumor_id}_mhc
+      echo run.py  --sample_id ${tumor_id} --input_bam_path ${tumor_id}.mhc.bam --output_path ${tumor_id}_mhc
+      mkdir ${tumor_id}_mhc
       #touch ${tumor_id}_mhc/report-${tumor_id}-hla.json
       #cat ${baseDir}/aux/report-example-hla.json > ${tumor_id}_mhc/report-${tumor_id}-hla.json
       #we run for the tumor CRAM
@@ -119,7 +119,7 @@ process VEP {
     set val(tumor_id), file("${tumor_id}.vep.vcf") into xVEP_out
   script:
        """
-       vep -i ${vcf} \\
+       echo vep -i ${vcf} \\
         -o ${tumor_id}.vep.vcf \\
         --cache --offline \\
         --dir_cache ${vep_dir_path} \\
@@ -134,10 +134,13 @@ process VEP {
         --plugin Wildtype \\
         --dir_plugins ${baseDir}/VEP_plugins \\
         --pick  --transcript_version
-       #touch ${tumor_id}.vep.vcf
+       touch ${tumor_id}.vep.vcf
        """
 }
 
+//we have to sync the xHLA, VEP ouputs and pvac input
+xHLA_xVEP=xHLA_out.join(xVEP_out, remainder: true)
+pvac_hla_vep=pvactools_input.join(xHLA_xVEP,remainder: true)
 
 process pVactools {
  cpus params.cpu
@@ -145,23 +148,23 @@ process pVactools {
 
   publishDir params.output_folder+'/pVACTOOLS/', mode: 'copy'
   input:
-  set val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name) from pvactools_input
-  set val(tumor_id), file(vcf_vep) from xVEP_out
-  set val(tumor_id), file(hla_dir_out) from xHLA_out
+  set val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name), file(hla_dir_out),file(vcf_vep) from pvac_hla_vep
+  //set val(tumor_id), file(hla_dir_out),file(vcf_vep) from xHLA_xVEP
+  //set val(tumor_id), file(hla_dir_out) from xHLA_out
 
   output:
     set val(tumor_id), path("${tumor_id}*_pvactools") into pVACTOOLS_out
     file("${tumor_id}.pvactools.log")
   script:
        """
-       #echo "${tumor_id} ${vcf_vep} ${normal_id} ${tumor_id_name} ${hla_dir_out}"
-       perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out}/report-${tumor_id}-hla.json \\
+       echo "${tumor_id} ${vcf_vep} ${normal_id} ${tumor_id_name} ${hla_dir_out}"
+       echo perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out}/report-${tumor_id}-hla.json \\
             -b ${baseDir}/db/xHLA2PVAC_alleles.txt -c ${normal_id}   -d ${vcf_vep} -t ${tumor_id_name} -p ${tumor_id} \\
             -e ${params.pvactools_predictors} > ${tumor_id}.pvactools.log
        #touch ${tumor_id}.neo
-       #mkdir ${tumor_id}_T1_pvactools
+       mkdir ${tumor_id}_T1_pvactools
        #mkdir ${tumor_id}_T2_pvactools
-       #touch ${tumor_id}.pvactools.log
+       touch ${tumor_id}.pvactools.log
        """
 }
 
