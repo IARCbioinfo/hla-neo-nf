@@ -91,10 +91,10 @@ process xHLA {
   script:
        """
       # we get the mhc reads for the normal CRAM/BAM it create prefix.mhc.bam
-      echo perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${params.ref} -p ${tumor_id}
+      perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${params.ref} -p ${tumor_id}
       # we run xHLA
-      echo run.py  --sample_id ${tumor_id} --input_bam_path ${tumor_id}.mhc.bam --output_path ${tumor_id}_mhc
-      mkdir ${tumor_id}_mhc
+      run.py  --sample_id ${tumor_id} --input_bam_path ${tumor_id}.mhc.bam --output_path ${tumor_id}_mhc
+      #mkdir ${tumor_id}_mhc
       #touch ${tumor_id}_mhc/report-${tumor_id}-hla.json
       #cat ${baseDir}/aux/report-example-hla.json > ${tumor_id}_mhc/report-${tumor_id}-hla.json
       #we run for the tumor CRAM
@@ -119,7 +119,7 @@ process VEP {
     set val(tumor_id), file("${tumor_id}.vep.vcf") into xVEP_out
   script:
        """
-       echo vep -i ${vcf} \\
+       vep -i ${vcf} \\
         -o ${tumor_id}.vep.vcf \\
         --cache --offline \\
         --dir_cache ${vep_dir_path} \\
@@ -134,7 +134,7 @@ process VEP {
         --plugin Wildtype \\
         --dir_plugins ${baseDir}/VEP_plugins \\
         --pick  --transcript_version
-       touch ${tumor_id}.vep.vcf
+       #touch ${tumor_id}.vep.vcf
        """
 }
 
@@ -157,14 +157,14 @@ process pVactools {
     file("${tumor_id}.pvactools.log")
   script:
        """
-       echo "${tumor_id} ${vcf_vep} ${normal_id} ${tumor_id_name} ${hla_dir_out}"
-       echo perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out}/report-${tumor_id}-hla.json \\
+       #echo "${tumor_id} ${vcf_vep} ${normal_id} ${tumor_id_name} ${hla_dir_out}"
+       perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out}/report-${tumor_id}-hla.json \\
             -b ${baseDir}/db/xHLA2PVAC_alleles.txt -c ${normal_id}   -d ${vcf_vep} -t ${tumor_id_name} -p ${tumor_id} \\
             -e ${params.pvactools_predictors} > ${tumor_id}.pvactools.log
        #touch ${tumor_id}.neo
-       mkdir ${tumor_id}_T1_pvactools
+       #mkdir ${tumor_id}_T1_pvactools
        #mkdir ${tumor_id}_T2_pvactools
-       touch ${tumor_id}.pvactools.log
+       #touch ${tumor_id}.pvactools.log
        """
 }
 
