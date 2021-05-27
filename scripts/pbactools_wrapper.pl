@@ -44,9 +44,6 @@ if(scalar(@tumors) == 1){
  }
  system($cmd)==0  or die "pvactools:  failed: $?";
 }
---epitope-length 8,9,10,11 \
-  --iedb-install-directory /opt/iedb \
-  --n-threads 4
 
 sub parse_xHLA_output{
 	my ($file,$xhla2pvac)=@_;
