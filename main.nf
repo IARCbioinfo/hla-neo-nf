@@ -63,12 +63,6 @@ ref_pac =  file(params.ref+'.pac')
 vep_dir_path = file(params.vep_dir)
 print_params()
 
-//PATHS in the container for databases
-// /hmftools/hg38
-
-// /hmftools/hg38/DiploidRegions.38.bed
-// /hmftools/hg38/GC_profile.1000bp.38.cnp
-// /hmftools/hg38/GermlineHetPon.38.vcf
 
 process xHLA {
 
@@ -95,7 +89,6 @@ process xHLA {
       # we run xHLA
       run.py  --sample_id ${tumor_id} --input_bam_path ${tumor_id}.mhc.bam --output_path ${tumor_id}_mhc
       mv ${tumor_id}_mhc/report-${tumor_id}-hla.json .
-      #touch report-${tumor_id}-hla.json
       """
 }
 
@@ -130,7 +123,6 @@ process VEP {
         --plugin Wildtype \\
         --dir_plugins ${baseDir}/VEP_plugins \\
         --pick  --transcript_version
-       #touch ${tumor_id}.vep.vcf
        """
 }
 
@@ -145,25 +137,15 @@ process pVactools {
   publishDir params.output_folder+'/pVACTOOLS/', mode: 'copy'
   input:
   set val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name), file(hla_dir_out),file(vcf_vep) from pvac_hla_vep
-  //set val(tumor_id), file(hla_dir_out),file(vcf_vep) from xHLA_xVEP
-  //set val(tumor_id), file(hla_dir_out) from xHLA_out
 
   output:
     set val(tumor_id), path("${tumor_id}*_pvactools") into pVACTOOLS_out
     file("${tumor_id}.pvactools.log")
   script:
        """
-       #echo "${tumor_id} ${vcf_vep} ${normal_id} ${tumor_id_name} ${hla_dir_out}"
-        perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out} \\
+         perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out} \\
             -b ${baseDir}/db/xHLA2PVAC_alleles.txt -c ${normal_id}   -d ${vcf_vep} -t ${tumor_id_name} -p ${tumor_id} \\
             -e ${params.pvactools_predictors} > ${tumor_id}.pvactools.log
-       # perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out}/report-${tumor_id}-hla.json \\
-       #    -b ${baseDir}/db/xHLA2PVAC_alleles.txt -c ${normal_id}   -d ${vcf_vep} -t ${tumor_id_name} -p ${tumor_id} \\
-       #    -e ${params.pvactools_predictors} > ${tumor_id}.pvactools.log
-       #touch ${tumor_id}.neo
-       #mkdir ${tumor_id}_T1_pvactools
-       #mkdir ${tumor_id}_T2_pvactools
-       #touch ${tumor_id}.pvactools.log
        """
 }
 
@@ -199,7 +181,8 @@ def parse_tn_file (tn_file,path_vcf,path_cram,cram){
 def print_params () {
   //software versions for v2.0
   def software_versions = ['xhla' : '0.0.0',
-                          'pVactools'   : 'x.y']
+                           'vep' : '99.2',
+                          'pVactools'   : '2.0.2']
   //we print the parameters
   log.info "\n"
   log.info "-\033[2m------------------Calling PARAMETERS--------------------\033[0m-"
