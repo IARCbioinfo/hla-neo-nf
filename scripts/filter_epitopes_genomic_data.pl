@@ -80,11 +80,11 @@ while(my $line=<FILE>){
 my $f1="pvacseq binding_filter $opts{p}.all_epitopes_rnafill.tsv $opts{p}.all_epitopes_binding.tsv";
 my $f2="pvacseq coverage_filter $opts{p}.all_epitopes_binding.tsv $opts{p}.all_epitopes_coverage.tsv";
 my $f3="pvacseq transcript_support_level_filter $opts{p}.all_epitopes_coverage.tsv $opts{p}.all_epitopes_tsl.tsv";
-my $f4="pvacseq top_score_filter $opts{p}.all_epitopes_tsl.tsv $opts{p}.filtered.tsv";
+my $f4="pvacseq top_score_filter $opts{p}.all_epitopes_tsl.tsv $opts{p}.filtered2.tsv";
 #we agregate the filters
-my $agg="pvacseq generate_aggregated_report $opts{p}.filtered.tsv $opts{p}.filtered.aggregated.tsv";
+#my $agg="pvacseq generate_aggregated_report $opts{p}.filtered.tsv $opts{p}.filtered.aggregated.tsv";
 system($f1) == 0 or die  "error excecuting : $?";
 system($f2) == 0 or die "error excecuting : $?";
 system($f3) == 0 or die "error excecuting : $?";
 system($f4) == 0 or die "error excecuting : $?";
-system($agg) == 0 or die  "error excecuting : $?";
+#system($agg) == 0 or die  "error excecuting : $?";
