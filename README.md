@@ -71,7 +71,7 @@ results
 │   ├── report-MESO_007-hla.json
 │   ├── report-MESO_008-hla.json
 │   ├── report-MESO_009-hla.json
-├── VEP							# Annotation of variant impact
+├── VEP				# Annotation of variant impact
 │   ├── MESO_001.vep.vcf
 │   ├── MESO_002.vep.vcf
 │   ├── MESO_003.vep.vcf
@@ -79,26 +79,26 @@ results
 │   ├── MESO_005.vep.vcf
 │   ├── MESO_006.vep.vcf
 |
-├── pVACTOOLS									#pvactools predictions
+├── pVACTOOLS					#pvactools predictions
 │   ├── MESO_002.pvactools.log			#pvactools log
 │   ├── MESO_002_T1_pvactools				
-│   │   ├── combined						#neoatigens for class I and class II
+│   │   ├── combined				 # neoatigens for class I and class II
 │   │   │   ├── B00JALW.all_epitopes.aggregated.tsv    # raw predictions aggregated
 │   │   │   ├── B00JALW.all_epitopes.tsv               # raw predictions 
-│   │   │   └── B00JALW.filtered.tsv	                  # filtered predictions
-│   │   ├── MHC_Class_I						#neoatigens for class I
+│   │   │   └── B00JALW.filtered.tsv	               # filtered predictions
+│   │   ├── MHC_Class_I				#neoatigens for class I
 │   │   │   ├── B00JALW.all_epitopes.aggregated.tsv
 │   │   │   ├── B00JALW.all_epitopes.tsv
 │   │   │   ├── B00JALW.filtered.tsv
 │   │   │   └── log
 │   │   │       └── inputs.yml
-│   │   └── MHC_Class_II				#neoatigens for class II
+│   │   └── MHC_Class_II			#neoatigens for class II
 │   │       ├── B00JALW.all_epitopes.aggregated.tsv
 │   │       ├── B00JALW.all_epitopes.tsv
 │   │       ├── B00JALW.fasta
 │   │       ├── B00JALW.filtered.tsv
 │   │       └── log
-|	 				└── inputs.yml
+|	         └── inputs.yml
 ├── nf-pipeline_info # Nextflow information directory
     ├── hla-neo_report.html
     ├── hla-neo_timeline.html
