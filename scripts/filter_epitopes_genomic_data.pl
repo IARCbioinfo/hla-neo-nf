@@ -78,7 +78,7 @@ while(my $line=<FILE>){
 #we run the pvacseq default filters which include
 #The binding filter is used to remove neoantigen candidates that do not meet desired peptide:MHC binding criteria. The coverage filter is used to remove variants that do not meet desired read count and VAF criteria (in normal DNA and tumor DNA/RNA). The transcript support level filter is used to remove variant annotations based on low quality transcript annotations. The top score filter is used to select the most promising peptide candidate for each variant. Multiple candidate peptides from a single somatic variant can be caused by multiple peptide lengths, registers, HLA alleles, and transcript annotations.
 my $f1="pvacseq binding_filter $opts{p}.all_epitopes_rnafill.tsv $opts{p}.all_epitopes_binding.tsv";
-my $f2="pvacseq coverage_filter $opts{p}.all_epitopes_binding.tsv $opts{p}.all_epitopes_coverage.tsv";
+my $f2="pvacseq coverage_filter  --tdna-vaf 0.1 $opts{p}.all_epitopes_binding.tsv $opts{p}.all_epitopes_coverage.tsv";
 my $f3="pvacseq transcript_support_level_filter $opts{p}.all_epitopes_coverage.tsv $opts{p}.all_epitopes_tsl.tsv";
 my $f4="pvacseq top_score_filter $opts{p}.all_epitopes_tsl.tsv $opts{p}.filtered2.tsv";
 #we agregate the filters
