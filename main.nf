@@ -123,6 +123,9 @@ process VEP {
         --plugin Wildtype \\
         --dir_plugins ${baseDir}/VEP_plugins \\
         --pick  --transcript_version
+	# we remove the VAF from the VCF
+	bcftools annotate -x  FORMAT/AF ${tumor_id}.vep.vcf > ${tumor_id}.vep.noAF.vcf
+	mv ${tumor_id}.vep.noAF.vcf ${tumor_id}.vep.vcf
        """
 }
 
