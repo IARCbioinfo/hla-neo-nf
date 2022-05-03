@@ -1,4 +1,4 @@
-# nf-hla-neo
+# hla-neo-nf
 Pipeline to predict neoantigens  from WGS of T/N pairs
 
 
