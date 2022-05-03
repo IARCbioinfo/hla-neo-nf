@@ -11,7 +11,7 @@ def show_help (){
 
     The typical command for running the pipeline is as follows:
 
-    nextflow run iarcbioinfo/purple-nf -singularity [OPTIONS]
+    nextflow run iarcbioinfo/hla-neo-nf -singularity [OPTIONS]
 
     Mandatory arguments:
       --tn_file		         [file] File containing list of T/N bam/cram files to be processed
