@@ -5,7 +5,7 @@ Pipeline to predict neoantigens  from WGS of T/N pairs
 ## Usage
   ```
   #using a tn_pairs file
-  nextflow run iarcbioinfo/nf-hla-neo -r v1.0  \
+  nextflow run iarcbioinfo/hla-neo-nf -r v1.0  \
   -profile singularity --ref chr6.mhc.fa \
   --tn_file cohort_neoantigen.tsv --cram_dir cram \
   --vcf_dir vcfs --vep_dir vep-db-99 --output_folder results_hla_neo
