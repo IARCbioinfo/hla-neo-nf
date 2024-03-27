@@ -6,4 +6,4 @@ channels:
 dependencies:
   - ensembl-vep=99.2
   - bcftools
-
+  - python=3
