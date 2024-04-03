@@ -12,16 +12,17 @@ def show_help (){
     nextflow run iarcbioinfo/hla-neo-nf -singularity [OPTIONS]
 
     Mandatory arguments:
-      --tn_file		         [file] File containing list of T/N bam/cram files to be processed
-      --cram_dir         [dir]  directory where the BAM or CRAM  file are stored
-      --vcf_dir         [dir]  directory where the VCF files are stored
-      --vep_dir         [dir] directory containing VEP database for annotation [hg38, GENCODE 33]
-      --ref               [file] fasta file of chr6 of reference genome [chr6-hg38.fa], should be indexed [chr6-hg38.fa.fai]
+      --tn_file		           [file] File containing list of T/N bam/cram files to be processed
+      --cram_dir             [dir]  directory where the BAM or CRAM  file are stored
+      --vcf_dir              [dir]  directory where the VCF files are stored
+      --vep_dir              [dir] directory containing VEP database for annotation [hg38, GENCODE 33]
+      --ref                  [file] fasta file of chr6 of reference genome [chr6-hg38.fa], should be indexed [chr6-hg38.fa.fai]
     Optional arguments:
-      --output_folder       [string] name of output folder
-      --cpu                 [Integer]  Number of CPUs[def:2]
-      --mem 		            [Integer] Max memory [def:8Gb]
+      --output_folder        [string] name of output folder
+      --cpu                  [Integer]  Number of CPUs[def:2]
+      --mem 		             [Integer] Max memory [def:8Gb]
       --pvactools_predictors [string] predicttions tools to compute neoantigens [def:all_class_i,all_class_ii or NetMHCpan,NetMHCIIpan]
+      --expr                 [file] File with expression of transcripts (rows) for each sample (columns)
       """.stripIndent()
 }
 
@@ -217,10 +218,10 @@ def parse_tn_file (tn_file,path_vcf,path_cram,cram){
 
 // print the calling parameter to the log and a log file
 def print_params () {
-  //software versions for v2.0
+  //software versions
   def software_versions = ['xhla' : '0.0.0',
-                           'vep' : '99.2',
-                          'pVactools'   : '2.0.2']
+                           'vep' : 111.0',
+                          'pVactools'   : '4.1.1']
   //we print the parameters
   log.info "\n"
   log.info "-\033[2m------------------Calling PARAMETERS--------------------\033[0m-"
