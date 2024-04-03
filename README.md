@@ -139,8 +139,8 @@ The first time that the container is built from the docker image, the TMPDIR  sh
 export TMPDIR=/tmp
 ```
 
-### running error
-Some software may occasionally crash 
+### Running error
+The mhccons module may occasionally crash and require a re-run (see https://github.com/griffithlab/pVACtools/pull/325 ). If this happens too much, you can use increase hte maximum numbers of retries in the nextflow config file.
 
 ## Contributions
 
