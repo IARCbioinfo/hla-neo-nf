@@ -10,7 +10,7 @@ Pipeline to predict neoantigens  from WGS of T/N pairs
   nextflow run iarcbioinfo/hla-neo-nf -r v1.0  \
   -profile singularity --ref chr6.mhc.fa \
   --tn_file cohort_neoantigen.tsv --cram_dir cram \
-  --vcf_dir vcfs --vep_dir vep-db-99 --output_folder results_hla_neo
+  --vcf_dir vcfs --vep_dir vep-db-111 --output_folder results_hla_neo
   ```
 
 ## Dependencies
@@ -120,11 +120,11 @@ The first time is necesary to get a local copy of the vep database, you can achi
 
 ```
 #get the singularity container
-singularity pull docker://docker.io/iarcbioinfo/ensembl-vep:v1.0
+singularity pull docker://docker.io/iarcbioinfo/ensembl-vep:latest
 #open a shell and run the folloing command
-singularity shell ensembl-vep_v1.0.sif
+singularity shell ensembl-vep_latest.sif
 #get a local copy of the vep cache database (gencode v33)
-vep_install -a cf -s homo_sapiens -y GRCh38 -c vep-db-99 --CONVERT
+vep_install -a cf -s homo_sapiens -y GRCh38 -c vep-db-111 --CONVERT
 
 ```
 
