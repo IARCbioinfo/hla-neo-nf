@@ -40,7 +40,7 @@ foreach my $r(@{$hla_regs}){
 }
 
 #convert bam to fastq
-system("samtools view -b $opts{p}.hla.seqs.sam | sambamba sort -p -n -o - /dev/stdin | bamToFastq -i /dev/stdin -fq \"$opts{p}.hla.fwd.fq\" -fq2 \"$opts{p}.hla.rev.fq\" 2>bam2fastq.log.err");
+system("samtools view -b $opts{p}.hla.seqs.sam | sambamba sort -p -n --tmpdir=$opts{p}_tmp -o - /dev/stdin | bamToFastq -i /dev/stdin -fq \"$opts{p}.hla.fwd.fq\" -fq2 \"$opts{p}.hla.rev.fq\" 2>bam2fastq.log.err");
 #we run BWA-MEM on the indexed
 system("bwa mem -t2 $opts{r} $opts{p}.hla.fwd.fq $opts{p}.hla.rev.fq 2>$opts{p}.bwa.log | samtools view -b - | samtools sort -T STMP -o $opts{p}.hla.chr6.bam -");
 system("samtools index $opts{p}.hla.chr6.bam");

@@ -32,12 +32,16 @@ my $i=1;
 
 foreach my $t(@tumors){
 my $cmd="";
+my $argnormal="";
+if($opts{c}!="None"){
+	$argnormal="--normal-sample-name $opts{c}";
+}
 if(scalar(@tumors) == 1){
-  $cmd="pvacseq run  --tdna-vaf 0.1  --n-threads 2 --iedb-install-directory /opt/iedb --pass-only --normal-sample-name $opts{c} $opts{d} $t ".join(",",@{$alleles->{pvac}});
+  $cmd="pvacseq run  --tdna-vaf 0.1  --n-threads 2 --iedb-install-directory /opt/iedb --pass-only $argnormal $opts{d} $t ".join(",",@{$alleles->{pvac}});
    $cmd.=" $tools $opts{p}_T_pvactools";
    print $cmd."\n";
  }else{
-     $cmd="pvacseq run  --tdna-vaf 0.1 --n-threads 2 --iedb-install-directory /opt/iedb --pass-only --normal-sample-name $opts{c} $opts{d} $t ".join(",",@{$alleles->{pvac}});
+     $cmd="pvacseq run  --tdna-vaf 0.1 --n-threads 2 --iedb-install-directory /opt/iedb --pass-only $argnormal $opts{d} $t ".join(",",@{$alleles->{pvac}});
       $cmd.=" $tools $opts{p}_T".$i."_pvactools";
       print $cmd."\n";
       $i++;

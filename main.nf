@@ -1,12 +1,10 @@
 #!/usr/bin/env nextflow
 
-
 //help function for the tool
 def show_help (){
   log.info IARC_Header()
   log.info tool_header()
     log.info"""
-
     Usage:
 
     The typical command for running the pipeline is as follows:
@@ -28,52 +26,17 @@ def show_help (){
 }
 
 
-
-
-
-//we display help information
-if (params.help){ show_help(); exit 0;}
-//we display the header of the tool
-log.info IARC_Header()
-log.info tool_header()
-//Check mandatory parameters
-assert (params.ref != null) : "please specify --ref chr6-hg38.fasta"
-assert (params.tn_file != null ) : "please specify --tn_file"
-assert (params.cram_dir != null ) : "please specify --cram_dir"
-assert (params.vcf_dir != null ) : "please specify --vcf_dir"
-assert (params.vep_dir != null ) : "please specify --vep_dir"
-
-//function that read the tumors to process from a tn_file
-if(params.tn_file){
-  def cram = params.bam ? false:true
- tn_pairs = parse_tn_file(params.tn_file,params.vcf_dir,params.cram_dir,cram)
- //we duplicate the tn_pairs channel
- tn_pairs.into {xHLA_input; xVEP_input; pvactools_input}
-}
-
-//chanel for reference genome
-ref_fasta = Channel.value(file(params.ref)).ifEmpty{exit 1, "reference file not found: ${params.ref}"}
-ref_fai = Channel.value(file(params.ref+'.fai')).ifEmpty{exit 1, "index file not found: ${params.ref}.fai"}
-//BWA indexes for re-mapping MHC reads
-ref_sa  = file(params.ref+'.sa')
-ref_bwt =  file(params.ref+'.bwt')
-ref_ann =  file(params.ref+'.ann')
-ref_amb =  file(params.ref+'.amb')
-ref_pac =  file(params.ref+'.pac')
-vep_dir_path = file(params.vep_dir)
-print_params()
-
-
+//type HLA
 process xHLA {
-
- cpus params.cpu
- memory params.mem+'G'
+  cpus params.cpu
+  memory params.mem+'G'
+  tag { tumor_id }
 
   publishDir params.output_folder+'/xHLA/', mode: 'copy'
   input:
-  set val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name) from xHLA_input
-  file(ref) from ref_fasta
-  file(fai) from ref_fai
+  tuple val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name)
+  file(ref) 
+  file(fai) 
   file ref_sa
   file ref_bwt
   file ref_ann
@@ -81,35 +44,36 @@ process xHLA {
   file ref_pac
 
   output:
-  set val(tumor_id), file("report-${tumor_id}-hla.json") into xHLA_out
+  tuple val(tumor_id), file("report-${tumor_id}-hla.json")
   script:
        """
       # we get the mhc reads for the normal CRAM/BAM it create prefix.mhc.bam
-      perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${params.ref} -p ${tumor_id}
+      perl ${baseDir}/scripts/extract_mhc_reads_hg38alt.pl -a ${baseDir}/db/hla_regions.lst -b ${normal} -r ${ref} -p ${tumor_id}
       # we run xHLA
       run.py  --sample_id ${tumor_id} --input_bam_path ${tumor_id}.mhc.bam --output_path ${tumor_id}_mhc
       mv ${tumor_id}_mhc/report-${tumor_id}-hla.json .
       """
 }
 
-// Annnot the VCF with VEP tools
+// Annotate the VCF with VEP tools
 //create a local VEP database (gencode 33) ~ 16Gb size
 //vep_install -a cf -s homo_sapiens -y GRCh38 -c vep-db-99 --CONVERT
 //https://pvactools.readthedocs.io/en/latest/pvacseq/input_file_prep/vep.html
 process VEP {
  cpus params.cpu
  memory params.mem+'G'
+ tag { tumor_id }
 
   publishDir params.output_folder+'/VEP/', mode: 'copy'
   input:
-  set val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name) from xVEP_input
+  tuple val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name)
   file (vep_dir_path)
   output:
-    set val(tumor_id), file("${tumor_id}.vep.vcf") into xVEP_out
+    tuple val(tumor_id), val(tumor_id_name), file("${tumor_id_name}.vep.noAF.vcf")
   script:
        """
         vep -i ${vcf} \\
-        -o ${tumor_id}.vep.vcf \\
+        -o ${tumor_id_name}.vep.vcf \\
         --cache --offline \\
         --dir_cache ${vep_dir_path} \\
         --format vcf \\
@@ -117,41 +81,113 @@ process VEP {
         --symbol  \\
         --terms SO \\
         --tsl \\
+        --biotype \\
         --hgvs \\
-        --fasta ${vep_dir_path}/homo_sapiens/99_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz \\
+        --fasta ${vep_dir_path}/homo_sapiens/111_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz \\
         --plugin Frameshift \\
         --plugin Wildtype \\
         --dir_plugins ${baseDir}/VEP_plugins \\
         --pick  --transcript_version
-	# we remove the VAF from the VCF
-	bcftools annotate -x  FORMAT/AF ${tumor_id}.vep.vcf > ${tumor_id}.vep.noAF.vcf
-	mv ${tumor_id}.vep.noAF.vcf ${tumor_id}.vep.vcf
+	      # we remove the VAF from the VCF
+	      bcftools annotate -x  FORMAT/AF ${tumor_id_name}.vep.vcf > ${tumor_id_name}.vep.noAF.vcf
        """
 }
 
-//we have to sync the xHLA, VEP ouputs and pvac input
-xHLA_xVEP=xHLA_out.join(xVEP_out, remainder: true)
-pvac_hla_vep=pvactools_input.join(xHLA_xVEP,remainder: true)
+process expr_annot {
+ cpus params.cpu
+ memory params.mem+'G'
+ tag { tumor_id_name }
+
+  publishDir params.output_folder+'/VEP/', mode: 'copy'
+  input:
+  tuple val(tumor_id), val(tumor_id_name), file(vcf)
+  file (expr)
+  output:
+    tuple val(tumor_id), val(tumor_id_name), file("${tumor_id_name}.vep.noAF.*expr.vcf")
+  script:
+       """
+       if grep -q ${tumor_id_name} ${expr}; then
+        vcf-expression-annotator -i transcript_id -e ${tumor_id_name} ${vcf} ${expr} custom transcript -o ${tumor_id_name}.vep.noAF.expr.vcf
+       else
+        cp -L ${vcf} ${tumor_id_name}.vep.noAF.noexpr.vcf
+       fi
+       """
+}
+
 
 process pVactools {
  cpus params.cpu
  memory params.mem+'G'
+ tag { tumor_id_name }
 
   publishDir params.output_folder+'/pVACTOOLS/', mode: 'copy'
   input:
-  set val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name), file(hla_dir_out),file(vcf_vep) from pvac_hla_vep
+  tuple val(tumor_id), file(vcf), file(normal), file(normal_index), val(normal_id), val(tumor_id_name), file(hla_dir_out), val(tumor_id_name2), file(vcf_vep)
 
   output:
-    set val(tumor_id), path("${tumor_id}*_pvactools") into pVACTOOLS_out
+    tuple val(tumor_id), path("${tumor_id}*_pvactools")
     file("${tumor_id}.pvactools.log")
   script:
        """
-         perl ${baseDir}/scripts/pbactools_wrapper.pl -a ${hla_dir_out} \\
+         perl ${baseDir}/scripts/pvactools_wrapper.pl -a ${hla_dir_out} \\
             -b ${baseDir}/db/xHLA2PVAC_alleles.txt -c ${normal_id}   -d ${vcf_vep} -t ${tumor_id_name} -p ${tumor_id} \\
             -e ${params.pvactools_predictors} > ${tumor_id}.pvactools.log
+         pvacseq generate_aggregated_report ${tumor_id}_T_pvactools/combined/${tumor_id_name}.all_epitopes.tsv ${tumor_id}_T_pvactools/combined/${tumor_id_name}.all_epitopes.aggregated.tsv
+         pvacseq generate_aggregated_report ${tumor_id}_T_pvactools/combined/${tumor_id_name}.filtered.tsv ${tumor_id}_T_pvactools/combined/${tumor_id_name}.filtered.aggregated.tsv
        """
 }
 
+// DSL2 workflow to run the processes
+workflow{
+  //we display help information
+  if (params.help){ show_help(); exit 0;}
+  //we display the header of the tool
+  log.info IARC_Header()
+  log.info tool_header()
+  //Check mandatory parameters
+  assert (params.ref != null) : "please specify --ref chr6-hg38.fasta"
+  assert (params.tn_file != null ) : "please specify --tn_file"
+  assert (params.cram_dir != null ) : "please specify --cram_dir"
+  assert (params.vcf_dir != null ) : "please specify --vcf_dir"
+  assert (params.vep_dir != null ) : "please specify --vep_dir"
+
+  //function that read the tumors to process from a tn_file
+  if(params.tn_file){
+    def cram = params.bam ? false:true
+    tn_pairs = parse_tn_file(params.tn_file,params.vcf_dir,params.cram_dir,cram)
+  }
+
+  //chanel for reference genome
+  ref_fasta = Channel.value(file(params.ref)).ifEmpty{exit 1, "reference file not found: ${params.ref}"}
+  ref_fai = Channel.value(file(params.ref+'.fai')).ifEmpty{exit 1, "index file not found: ${params.ref}.fai"}
+  //BWA indexes for re-mapping MHC reads
+  ref_sa  = file(params.ref+'.sa')
+  ref_bwt =  file(params.ref+'.bwt')
+  ref_ann =  file(params.ref+'.ann')
+  ref_amb =  file(params.ref+'.amb')
+  ref_pac =  file(params.ref+'.pac')
+  vep_dir_path = file(params.vep_dir)
+
+  print_params()
+
+  //run HLA typing
+  xHLA(tn_pairs,ref_fasta,ref_fai,ref_sa,ref_bwt,ref_ann,ref_amb,ref_pac)
+  // run VEP
+  VEP(tn_pairs,vep_dir_path)
+
+  // if expression matrix provided, run expr annotation
+  if(params.expr!=null){
+    expr = file(params.expr)
+    expr_annot(VEP.out,expr)
+    xHLA_xVEP=xHLA.out.join(expr_annot.out, remainder: true).view()
+  }else{//otherwise, just use direct VEP output
+    //to sync the xHLA, VEP ouputs and pvac input
+    xHLA_xVEP=xHLA.out.join(VEP.out, remainder: true)
+  }
+  pvac_hla_vep=tn_pairs.join(xHLA_xVEP,remainder: true).view()
+
+  pVactools(pvac_hla_vep)
+}
 
 /*
 *
@@ -165,7 +201,6 @@ def parse_tn_file (tn_file,path_vcf,path_cram,cram){
 			def file_ext = cram ? '.crai':'.bai'
 			//[sample t[.bam,cram] t[.bai,crai] n[.bam,.cram] n[.bai,.crai]]
       //id      vcf     normal_cram     normal_id       tumor_id
-
 
     def tn_pairs=Channel.fromPath(tn_file)
       .splitCsv(header: true, sep: '\t', strip: true)
