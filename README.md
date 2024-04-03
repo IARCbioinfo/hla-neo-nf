@@ -1,3 +1,5 @@
+[![Docker Hub](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com/r/iarcbioinfo/ensembl-vep/)
+
 # hla-neo-nf
 Pipeline to predict neoantigens  from WGS of T/N pairs
 
@@ -9,7 +11,6 @@ Pipeline to predict neoantigens  from WGS of T/N pairs
   -profile singularity --ref chr6.mhc.fa \
   --tn_file cohort_neoantigen.tsv --cram_dir cram \
   --vcf_dir vcfs --vep_dir vep-db-99 --output_folder results_hla_neo
-  
   ```
 
 ## Dependencies
@@ -19,6 +20,7 @@ Pipeline to predict neoantigens  from WGS of T/N pairs
 	- [xHLA](https://github.com/humanlongevity/HLA)
 	- [VEP](https://github.com/Ensembl/ensembl-vep)
 	- [pvactools](https://github.com/griffithlab/pVACtools)
+        - [vatools](https://vatools.readthedocs.io/en/latest/index.html)
 	
 You can avoid installing all the external software by only installing Docker or singularity.
 See the [IARC-nf](https://github.com/IARCbioinfo/IARC-nf) repository for more information.
@@ -41,9 +43,11 @@ A text file tabular separated, with the following header:
 ```
 id      vcf     normal_cram     normal_id       tumor_id
 sample1	sample1.vcf.gz	sample1_N.cram	NORMAL1	TUMOR1
-sample2	sample2.vcf.gz	sample2_N.cram	sample2_N.cram	NORMAL2	TUMOR2
+sample2	sample2.vcf.gz	sample2_N.cram	sample2_N.cram	None	TUMOR2
 sample3	sample3.vcf.gz	sample3_N.cram	sample3_N.cram	NORMAL3	TUMOR3_1,TUMOR3_2
 ``` 
+
+Note that in case the vcf contains variants confidently called as somatic, the normal_id can be omitted (put "None" instead).
 
 ### Optional parameters
 
@@ -52,7 +56,7 @@ sample3	sample3.vcf.gz	sample3_N.cram	sample3_N.cram	NORMAL3	TUMOR3_1,TUMOR3_2
 | --pvactools_predictors | [string]| predictions tools to compute neoantigens [def:all_class_i,all_class_ii or NetMHCpan,NetMHCIIpan]|
 |      --bam     |       [flag] |active bam mode [def:cram]|
 |     --output_folder |  [string] |name of output folder |
-|      --cpu          |[Integer] | Number of CPUs[def:2] |
+|      --cpu          |[Integer] | Number of CPUs[def:20] |
 |      --mem |        [Integer] | Max memory [def:8Gb] |  
 
 
@@ -85,7 +89,8 @@ results
 │   │   ├── combined				 # neoatigens for class I and class II
 │   │   │   ├── B00JALW.all_epitopes.aggregated.tsv    # raw predictions aggregated
 │   │   │   ├── B00JALW.all_epitopes.tsv               # raw predictions 
-│   │   │   └── B00JALW.filtered.tsv	               # filtered predictions
+│   │   │   ├── B00JALW.filtered.tsv	               # filtered predictions
+│   │   │   └── B00JALW.aggregated.filtered.tsv	       # filtered aggregated
 │   │   ├── MHC_Class_I				#neoatigens for class I
 │   │   │   ├── B00JALW.all_epitopes.aggregated.tsv
 │   │   │   ├── B00JALW.all_epitopes.tsv
@@ -134,12 +139,16 @@ The first time that the container is built from the docker image, the TMPDIR  sh
 export TMPDIR=/tmp
 ```
 
+### running error
+Some software may occasionally crash 
+
 ## Contributions
 
   | Name      | Email | Description     |
   |-----------|---------------|-----------------|
-  | Matthieu Foll*    |            follm@iarc.fr | Developer to contact for support (link to specific gitter chatroom) |
-  | Alex Di Genova | digenovaa@fellows.iarc.fr| Developer |
+  | Matthieu Foll*    | follm@iarc.who.int | Developer to contact for support |
+  | Alex Di Genova |  | Developer |
+  | Nicolas Alcala | alcalan@iarc.who.int| Developer |
 
 
 
